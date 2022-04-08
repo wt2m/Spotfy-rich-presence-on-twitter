@@ -29,17 +29,16 @@ spotify = {
 
 print("Initializing")
 
-
-
 def main():
-    threading.Timer(60.0, main).start()
+    cron()
+
+current_track_error_hander = ['Old track', None, '204']
+def cron(): #Run the code every 60 seconds
+    threading.Timer(60.0, cron).start()
     token = get_token()
     current_track = get_current_track(token)
-    if(current_track != 'Old track'):
+    if(current_track not in current_track_error_hander):
         change_twitter_status(current_track['name'], current_track['artist'])
-
-
-
 
 def get_current_track(token: str) -> str:
     headers = {
@@ -47,21 +46,24 @@ def get_current_track(token: str) -> str:
     'Content-Type': 'application/json',
     'Authorization': f'Bearer ' + token,
     }
-    
     try:
         response = requests.get('https://api.spotify.com/v1/me/player/currently-playing', 
-                    headers = headers, timeout = 5)
-        json = response.json()
-        old_track = ''
-        song = {
-            'artist': json['item']['album']['artists'][0]['name'],
-            'name': json['item']['name']
-        }
-        if(song['name'] == old_track):
-            return 'Old track'
+                headers = headers, timeout = 5)
+        if(response.status_code != 204):
+            json = response.json()
+            old_track = ''
+            song = {
+                'artist': json['item']['album']['artists'][0]['name'],
+                'name': json['item']['name']
+            }
+            if(song['name'] == old_track):
+                return 'Old track'
+            else:
+                old_track = song['name']
+                return song
         else:
-            old_track = song['name']
-            return song
+            print('Spotify not playing any song')
+            return '204'
     except:
         return None
 
@@ -83,10 +85,11 @@ def change_twitter_status(song_name:str, artist: str) -> str:
     )
     try:
         twitterAPI = tweepy.API(auth)
-        description = "based low profile guy \n\nplaying on spotfy: " + artist + ' "' + song_name+'"'
+        description = "based low profile guy \n\nplaying on spotify: " + artist + ' "' + song_name+'"'
         twitterAPI.update_profile(description=description)
         print(time.ctime() + " Description changed to: \n" + description)
     except:
+        print('Twitter API error!')
         return False
     
 
